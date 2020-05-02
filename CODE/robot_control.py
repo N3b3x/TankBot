@@ -1,8 +1,4 @@
 import pigpio, time
-import RPi.GPIO as altGPIO
-
-altGPIO.setmode(altGPIO.BCM)
-altGPIO.setwarnings(False)
 
 #=======================================================================//
 # KEY VARIABLES
@@ -51,6 +47,8 @@ R_IR1   = 4
 R_IR2   = 18
 ir_pins = [L_IR2,L_IR1,R_IR1,R_IR2]
 
+CW  = 0
+CCW = 1
 #===================================#
 # BUTTON/BUZZER PINS
 #===================================#
@@ -71,8 +69,8 @@ LED_MIN_DUTY = 0
 #===================================#
 # ULTRASONIC PINS
 #===================================#
-ULTRA_TX = 0
-ULTRA_RX = 1
+ULTRA_TX = 9  # J3
+ULTRA_RX = 11 # J2
 
 #===================================#
 # CAMERA AND ULTRASONIC SERVOS
@@ -146,11 +144,8 @@ def init():
     #===================================#
     # SETUP THE ULTRASONIC SENSOR
     #===================================#
-    altGPIO.setup(ULTRA_TX,altGPIO.OUT)
-    altGPIO.setup(ULTRA_RX,altGPIO.IN)
-    # LET SENSOR SETTLE
-    altGPIO.output(ULTRA_TX,altGPIO.LOW)
-    time.sleep(2)
+    #GPIO.set_mode(ULTRA_TX,OUTPUT)
+    #GPIO.set_mode(ULTRA_RX,INPUT)
 
     #===================================#
     # SETUP THE IR SENSORS
@@ -159,10 +154,7 @@ def init():
     GPIO.set_mode(L_IR1,INPUT)
     GPIO.set_mode(R_IR1,INPUT)
     GPIO.set_mode(R_IR2,INPUT)
-
-#===================================#
-#===================================#
-
+    
 #===================================#
 # MOVE FORWARD FUNCTIONS
 #===================================#
@@ -178,17 +170,14 @@ def moveForward(dutyCycle):
     GPIO.write(AIN2,HIGH)
 
     # RIGHT MOTOR SHOULD BE CW
-    GPIO.write(BIN1,HIGH)
-    GPIO.write(BIN2,LOW)
+    GPIO.write(BIN1,LOW)
+    GPIO.write(BIN2,HIGH)
 
     #=============================#
     # SET THE SPEED
     #=============================#
-    GPIO.set_PWM_dutycycle(dutyCycle)
+    GPIO.set_PWM_dutycycle(PWMA,dutyCycle)
     GPIO.set_PWM_dutycycle(PWMB,dutyCycle)
-
-#===================================#
-#===================================#
 
 #===================================#
 # MOVE BACKWARD FUNCTIONS
@@ -205,8 +194,8 @@ def moveBackward(dutyCycle):
     GPIO.write(AIN2,LOW)
 
     # RIGHT MOTOR SHOULD BE CCW
-    GPIO.write(BIN1,LOW)
-    GPIO.write(BIN2,HIGH)
+    GPIO.write(BIN1,HIGH)
+    GPIO.write(BIN2,LOW)
 
     #=============================#
     # SET THE SPEED
@@ -215,13 +204,10 @@ def moveBackward(dutyCycle):
     GPIO.set_PWM_dutycycle(PWMB,dutyCycle)
 
 #===================================#
-#===================================#
-
-#===================================#
 # ROTATE FUNCTIONS
 # dir = 0 -> CW, 1 -> CCW
 #===================================#
-def rotate(dutyCycle,dir):
+def rotate(dir,dutyCycle):
     global robot_state, GPIO
     # set the robot's state
     robot_state = ROTATING
@@ -229,19 +215,20 @@ def rotate(dutyCycle,dir):
     # SET THE DIRECTION
     #=============================#
     if(dir == 0):
-        # LEFT MOTOR SHOULD BE CCW
+        # LEFT MOTOR SHOULD BE 
         GPIO.write(AIN1,LOW)
         GPIO.write(AIN2,HIGH)
 
-        # RIGHT MOTOR SHOULD BE CW
-        GPIO.write(BIN1,LOW)
-        GPIO.write(BIN2,HIGH)
+        # RIGHT MOTOR SHOULD BE 
+        GPIO.write(BIN1,HIGH)
+        GPIO.write(BIN2,LOW)
+        
     else:
-        # LEFT MOTOR SHOULD BE CCW
-        GPIO.write(AIN1,LOW)
-        GPIO.write(AIN2,HIGH)
+        # LEFT MOTOR SHOULD BE
+        GPIO.write(AIN1,HIGH)
+        GPIO.write(AIN2,LOW)
 
-        # RIGHT MOTOR SHOULD BE CW
+        # RIGHT MOTOR SHOULD BE
         GPIO.write(BIN1,LOW)
         GPIO.write(BIN2,HIGH)
 
@@ -250,9 +237,6 @@ def rotate(dutyCycle,dir):
     #=============================#
     GPIO.set_PWM_dutycycle(PWMA,dutyCycle)
     GPIO.set_PWM_dutycycle(PWMB,dutyCycle)
-
-#===================================#
-#===================================#
 
 #===================================#
 # STOP FUNCTIONS
@@ -279,26 +263,28 @@ def stop():
     GPIO.set_PWM_dutycycle(PWMB,0)
 
 #===================================#
-#===================================#
-
-#===================================#
 # GET DISTANCE READING
 #===================================#
 def ping(angle):
+    timeout = 2
     setUltraServo(angle)
-
-    altGPIO.write(ULTRA_TX,HIGH)
+    
+    # LET SENSOR SETTLE
+    GPIO.write(ULTRA_TX,LOW)
+    time.sleep(2)
+    
+    GPIO.write(ULTRA_TX,HIGH)
     time.sleep(0.00001)
-    altGPIO.write(ULTRA_TX,LOW)
+    GPIO.write(ULTRA_TX,LOW)
 
     # While the echo is still low, keep getting
     # the timestamp
-    while altGPIO.input(ULTRA_RX)==LOW:
+    while GPIO.read(ULTRA_RX)==LOW:
         pulse_start = time.time()
 
     # As soon as the echo is heard back, ULTRA_RX goes HIGH
     # So, while it's high, keep getting the current time
-    while altGPIO.input(ULTRA_RX) == HIGH:
+    while GPIO.read(ULTRA_RX) == HIGH:
         pulse_end = time.time()
 
     # Calculate pulse duration
@@ -339,21 +325,14 @@ def setLED(R_DUTY,G_DUTY,B_DUTY):
     GPIO.set_PWM_dutycycle(LED_B,B_DUTY)
 
 #===================================#
-#===================================#
-
-#===================================#
 # SET ULRASONIC SERVO ANGLE [GOOD]
 #===================================#
 def setUltraServo(angle):
     global ULTRA_HORZ_SERVO
     setServoAngle(ULTRA_HORZ_SERVO,angle)
-    pass
 
 #===================================#
-#===================================#
-
-#===================================#
-# SET CAMERA SERVO ANGLES
+# SET CAMERA SERVO ANGLES [GOOD]
 #===================================#
 def setCameraHorzServo(angle):
     global CAM_HORZ_SERVO
@@ -366,7 +345,7 @@ def setCameraVertServo(angle):
 def setCameraServos(horz_angle,vert_angle):
     setCameraHorzServo(horz_angle)
     setCameraVertServo(vert_angle)
-
+    
 #===================================#
 # READ BUTTON
 #===================================#
@@ -376,9 +355,23 @@ def readButton():
     GPIO.set_mode(BUTTON,INPUT)
     return GPIO.read(BUTTON)
 
+#===================================#
+# READ IR [GOOD]
+#===================================#
+def readFarLeftIR():
+    return GPIO.read(L_IR1)
+
+def readLeftIR():
+    return GPIO.read(L_IR2)
+
+def readRightIR():
+    return GPIO.read(R_IR1)
+
+def readFarRightIR():
+    return GPIO.read(R_IR2)
 
 #===================================#
-# SET BUZZER
+# SET BUZZER [GOOD]
 #===================================#
 def setBuzzer(duty,frequency):
     global BUZZER
@@ -393,13 +386,13 @@ def setBuzzer(duty,frequency):
     GPIO.set_PWM_frequency(BUZZER,frequency)
     GPIO.set_PWM_dutycycle(BUZZER,duty)
 
-
 #=======================================================================//
-# HELPER FUNCTIONS
+# HELPER FUNCTIONS 
 #=======================================================================//
-# Angles limited to -90 to 90
+#===================================#
+# SET SERVO'S ANGLE [GOOD]
+#===================================#
 def setServoAngle(servo_pin,angle):
-    # Angles limited to -90 to 90
     if angle>SERVO_MAX_ANGLE:
         angle = SERVO_MAX_ANGLE
     if angle<SERVO_MIN_ANGLE:
