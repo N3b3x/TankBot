@@ -1,10 +1,14 @@
-import pigpio
-from gpiozero import DistanceSensor, LineSensor
-import time
+import pigpio, time
+import RPi.GPIO as altGPIO
+
+altGPIO.setmode(altGPIO.BCM)
+altGPIO.setwarnings(False)
 
 #=======================================================================//
 # KEY VARIABLES
 #=======================================================================//
+# import os
+# os.system("sudo pigpiod")
 #===================================#
 # ROBOT STATE
 #===================================#
@@ -47,11 +51,6 @@ R_IR1   = 4
 R_IR2   = 18
 ir_pins = [L_IR2,L_IR1,R_IR1,R_IR2]
 
-# VARIABLES TO HOLD LINE SENSOR OBJECTS
-FAR_LEFT_IR  = None
-LEFT_IR      = None
-RIGHT_IR     = None
-FAR_RIGHT_IR = None
 #===================================#
 # BUTTON/BUZZER PINS
 #===================================#
@@ -75,9 +74,6 @@ LED_MIN_DUTY = 0
 ULTRA_TX = 0
 ULTRA_RX = 1
 
-# VARIABLE TO HOLD ULTRASONIC SENSOR OBJECT
-ULTRA_SENSOR = None
-
 #===================================#
 # CAMERA AND ULTRASONIC SERVOS
 #===================================#
@@ -91,9 +87,9 @@ SERVO_MIN_ANGLE = 0
 SERVO_MAX_ANGLE = 180
 
 # MIN, MID, AND MAX PULSE WIDTH FOR SERVOS 
-SERVO_MIN_PULSE_WIDTH_MS = 1000 # 500 ?
+SERVO_MIN_PULSE_WIDTH_MS = 500 # 500 ?
 SERVO_MID_PULSE_WIDTH_MS = 1500
-SERVO_MAX_PULSE_WIDTH_MS = 2000 # 2400 ?
+SERVO_MAX_PULSE_WIDTH_MS = 2400 # 2400 ?
 
 #===================================#
 # IR REMOTE
@@ -107,16 +103,14 @@ IR_REMOTE = 2
 # INIT FUNCTIONS
 #===================================#
 def init():
-    global FAR_LEFT_IR, LEFT_IR, RIGHT_IR, FAR_RIGHT_IR, ULTRA_SENSOR
-
     #===================================#
     # SETUP MOTORS
     #===================================#
     # SETUP ALL MOTOR ASSOCIATED PIN AS AN OUTPUT
-    GPIO.set_mode(m_pins,OUTPUT)   
+    # GPIO.set_mode(m_pins,OUTPUT)   
     # SETUP THE PWM FREQUENCY AND DUTY CYCLE         
-    GPIO.set_PWN_frequency(PWMA,1000)       
-    GPIO.set_PWN_frequency(PWMB,1000)
+    GPIO.set_PWM_frequency(PWMA,1000)       
+    GPIO.set_PWM_frequency(PWMB,1000)
     GPIO.set_PWM_dutycycle(PWMA,0)
     GPIO.set_PWM_dutycycle(PWMB,0)
 
@@ -124,11 +118,11 @@ def init():
     # SETUP LEDS
     #===================================#
     # SETUP ALL LED PINS AS AN OUTPUT
-    GPIO.set_mode(led_pins,OUTPUT)
+    # GPIO.set_mode(led_pins,OUTPUT)
     # SETUP THE PWM FREQUENCY AND DUTY CYCLE
-    GPIO.set_PWN_frequency(LED_R,1000)
-    GPIO.set_PWN_frequency(LED_G,1000)
-    GPIO.set_PWN_frequency(LED_B,1000)
+    GPIO.set_PWM_frequency(LED_R,1000)
+    GPIO.set_PWM_frequency(LED_G,1000)
+    GPIO.set_PWM_frequency(LED_B,1000)
     GPIO.set_PWM_dutycycle(LED_R,0)
     GPIO.set_PWM_dutycycle(LED_G,0)
     GPIO.set_PWM_dutycycle(LED_B,0)
@@ -137,8 +131,8 @@ def init():
     # SETUP BUZZER
     #===================================#
     # SETUP THE PWM FREQUENCY AND DUTY CYCLE
-    GPIO.set_PWN_frequency(BUZZER,100)
-    GPIO.set_PWM_dutycycle(BUZZER,0)
+    GPIO.set_PWM_frequency(BUZZER,100)
+    GPIO.set_PWM_dutycycle(BUZZER,255)
 
     #===================================#
     # SETUP SERVOS
@@ -150,23 +144,21 @@ def init():
     GPIO.set_servo_pulsewidth(ULTRA_HORZ_SERVO, SERVO_MID_PULSE_WIDTH_MS)
 
     #===================================#
-    # SETUP THE IR SENSORS
-    #===================================#
-    GPIO.set_mode(ir_pins,INPUT)
-    FAR_LEFT_IR  = LineSensor(L_IR2)
-    LEFT_IR      = LineSensor(L_IR1)
-    RIGHT_IR     = LineSensor(R_IR1)
-    FAR_RIGHT_IR = LineSensor(R_IR2)
-
-    #===================================#
     # SETUP THE ULTRASONIC SENSOR
     #===================================#
-    GPIO.set_mode(ULTRA_TX,OUTPUT)
-    GPIO.set_mode(ULTRA_RX,INPUT)
-    ULTRA_SENSOR = DistanceSensor(echo=ULTRA_RX,trigger=ULTRA_TX)
-    # # LET SENSOR SETTLE
-    # GPIO.write(ULTRA_TX,LOW)
-    # time.sleep(2)
+    altGPIO.setup(ULTRA_TX,altGPIO.OUT)
+    altGPIO.setup(ULTRA_RX,altGPIO.IN)
+    # LET SENSOR SETTLE
+    altGPIO.output(ULTRA_TX,altGPIO.LOW)
+    time.sleep(2)
+
+    #===================================#
+    # SETUP THE IR SENSORS
+    #===================================#
+    GPIO.set_mode(L_IR2,INPUT)
+    GPIO.set_mode(L_IR1,INPUT)
+    GPIO.set_mode(R_IR1,INPUT)
+    GPIO.set_mode(R_IR2,INPUT)
 
 #===================================#
 #===================================#
@@ -294,18 +286,20 @@ def stop():
 #===================================#
 def ping(angle):
     global ULTRA_SENSOR
-    # GPIO.write(ULTRA_TX,HIGH)
+    setUltraServo(angle)
+
+    # altGPIO.write(ULTRA_TX,HIGH)
     # time.sleep(0.00001)
-    # GPIO.write(ULTRA_TX,LOW)
+    # altGPIO.write(ULTRA_TX,LOW)
 
     # # While the echo is still low, keep getting
     # # the timestamp
-    # while GPIO.input(ULTRA_RX)==LOW:
+    # while altGPIO.input(ULTRA_RX)==LOW:
     #     pulse_start = time.time()
 
     # # As soon as the echo is heard back, ULTRA_RX goes HIGH
     # # So, while it's high, keep getting the current time
-    # while GPIO.input(ULTRA_RX) == HIGH:
+    # while altGPIO.input(ULTRA_RX) == HIGH:
     #     pulse_end = time.time()
 
     # # Calculate pulse duration
@@ -316,11 +310,11 @@ def ping(angle):
     # # we need to divide by 2, therefore, 34300cm/s = (Distance/2)/Time
     # distance = pulse_duration*17150
     # # Round up value to 2 decimal places
-    # distance = round(distance,2)    
-    return (ULTRA_SENSOR.distance * 100)
+    # distance = round(distance,2)
+    #return (distance)
 
 #===================================#
-# SET RGB SEARCHLIGHT
+# SET RGB SEARCHLIGHT [GOOD]
 #===================================#
 def setLED(R_DUTY,G_DUTY,B_DUTY):
     global GPIO
@@ -349,7 +343,7 @@ def setLED(R_DUTY,G_DUTY,B_DUTY):
 #===================================#
 
 #===================================#
-# SET ULRASONIC SERVO ANGLE
+# SET ULRASONIC SERVO ANGLE [GOOD]
 #===================================#
 def setUltraServo(angle):
     global ULTRA_HORZ_SERVO
@@ -362,17 +356,17 @@ def setUltraServo(angle):
 #===================================#
 # SET CAMERA SERVO ANGLES
 #===================================#
-def setCameraHorzServos(angle):
+def setCameraHorzServo(angle):
     global CAM_HORZ_SERVO
     setServoAngle(CAM_HORZ_SERVO,angle)
 
-def setCameraVertServos(angle):
+def setCameraVertServo(angle):
     global CAM_VERT_SERVO
     setServoAngle(CAM_VERT_SERVO,angle)
 
 def setCameraServos(horz_angle,vert_angle):
-    setCameraHorzServos(horz_angle)
-    setCameraVertServos(vert_angle)
+    setCameraHorzServo(horz_angle)
+    setCameraVertServo(vert_angle)
 
 #===================================#
 # READ BUTTON
