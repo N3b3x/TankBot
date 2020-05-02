@@ -285,33 +285,32 @@ def stop():
 # GET DISTANCE READING
 #===================================#
 def ping(angle):
-    global ULTRA_SENSOR
     setUltraServo(angle)
 
-    # altGPIO.write(ULTRA_TX,HIGH)
-    # time.sleep(0.00001)
-    # altGPIO.write(ULTRA_TX,LOW)
+    altGPIO.write(ULTRA_TX,HIGH)
+    time.sleep(0.00001)
+    altGPIO.write(ULTRA_TX,LOW)
 
-    # # While the echo is still low, keep getting
-    # # the timestamp
-    # while altGPIO.input(ULTRA_RX)==LOW:
-    #     pulse_start = time.time()
+    # While the echo is still low, keep getting
+    # the timestamp
+    while altGPIO.input(ULTRA_RX)==LOW:
+        pulse_start = time.time()
 
-    # # As soon as the echo is heard back, ULTRA_RX goes HIGH
-    # # So, while it's high, keep getting the current time
-    # while altGPIO.input(ULTRA_RX) == HIGH:
-    #     pulse_end = time.time()
+    # As soon as the echo is heard back, ULTRA_RX goes HIGH
+    # So, while it's high, keep getting the current time
+    while altGPIO.input(ULTRA_RX) == HIGH:
+        pulse_end = time.time()
 
-    # # Calculate pulse duration
-    # pulse_duration = pulse_end - pulse_start
+    # Calculate pulse duration
+    pulse_duration = pulse_end - pulse_start
 
-    # # speed = Distance/time, speed of sound at sea level = 343m/s
-    # # and since the distance measured is the distance to and from wall
-    # # we need to divide by 2, therefore, 34300cm/s = (Distance/2)/Time
-    # distance = pulse_duration*17150
-    # # Round up value to 2 decimal places
-    # distance = round(distance,2)
-    #return (distance)
+    # speed = Distance/time, speed of sound at sea level = 343m/s
+    # and since the distance measured is the distance to and from wall
+    # we need to divide by 2, therefore, 34300cm/s = (Distance/2)/Time
+    distance = pulse_duration*17150
+    # Round up value to 2 decimal places
+    distance = round(distance,2)
+    return (distance)
 
 #===================================#
 # SET RGB SEARCHLIGHT [GOOD]
