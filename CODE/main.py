@@ -1,3 +1,6 @@
+#===================================#
+# IMPORT THE NECESSARY LIBRARIES
+#===================================#
 import cv2
 import robot_control as rc
 import time
@@ -13,52 +16,62 @@ cap = cv2.VideoCapture(0)                                                   # Ca
 #===================================#
 START_WAITING_TIME = 5  # THE AMOUNT OF SECONDS TO WAIT BEFORE STARTING AFTER THE START BUTTON IS PRESSED
 
-TAPE_DETECTED    = 1
-NO_TAPE_DETECTED = 0
+# THE FOLLOWING WILL HELP KEEP TRACK OF THE RETURNED VALUE FROM THE IR SENSORS
+TAPE_DETECTED    = 1    # VALUE OF IR WHEN TAPE IS BELOW
+NO_TAPE_DETECTED = 0    # VALUE OF IR WHEN NO TAPE IS BELOW
 
-FORWARD_SPEED    = 120
-NO_TAPE_OFFSET   = 10
+# THE FOLLOWING WILL HELP KEEP TRACK OF THE SPEED WHEN THE ROBOT IS MOVING FORWARD
+FORWARD_SPEED    = 120  # THIS IS THE SPEED OF THE WHEELS WHEN THE ROBOT MOVES FORWARD
+NO_TAPE_OFFSET   = 10   # WHAT TO OFFSET THE WHEELS SPEED WITH WHEN STARTS TO LEAVE THE TAPE
 
-ROTATE_SPEED        = 100
-ROTATE_SPEED_OFFSET = 10
+# THE FOLLOWING WILL HELP KEEP TRACK OF THE SPEED WHEN THE ROBOT IS ROTATING
+FORWARD_FOR_TURN_TIMEOUT        = 1     # THE AMOUNT OF SECONDS TO MOVE FORWARD RIGHT BEFORE ROTATING [s]
+FORWARD_LINE_DETECTION_TIMEOUT  = 0.01  # THE AMOUNT OF SECONDS TO MOVE FORWARD TO SEE IF THE LINE CONTINUES FORWARD AFTER REACHING AN INTERSECTION [s]
+ROTATE_SPEED                    = 100   # THIS IS THE SPEED OF THE WHEELS WHEN ROBOT ROTATES
+ROTATE_SPEED_OFFSET             = 10    # WHAT TO OFFSET THE WHEELS SPEED WITH WHEN WE DETECT A LINE ON THE FAR OUT IR SENSORS
 
-RIGHT = rc.CW
-LEFT  = rc.CCW 
+# THE FOLLOWING WILL HELP KEEP TRACK OF THE BIAS AND TURNING DIRECTIONS
+NONE    = 0
+FORWARD = 1
+RIGHT   = 2
+LEFT    = 3
+BACK    = 4
 
-NOTHING_DETECTED    = 0
-INTERSECTION_RETURN = 1
-NO_MORE_LINE_RETURN = 2
-
-FORWARD_FOR_TURN_TIMEOUT = 1 # seconds
+# THE FOLLOWING WILL HELP KEEP TRACK OF WHAT THE LINE FOLLOWING FUNCTION RETURNS
+NOTHING_DETECTED      = 0
+INTERSECTION_DETECTED = 1
+NO_MORE_LINE_DETECTED = 2
+FORWARD_LINE_DETECTED = 3
 
 # THE FOLLOWING DEFINITIONS WILL HELP US KEEP TRACK OF THE DIFFERENT MODES WE HAVE IN THE LINE FOLLOWING
 DEFAULT_LINE_FOLLOWING      = 0     # THIS MODE IS FOR WHEN WE JUST WANT TO FOLLOW THE LINE
 NO_DETECTION_LINE_FOLLOWING = 1     # THIS MODE IS FOR WHEN WE WANT TO FOLLOW THE LINE BUT WITHOUT ANY OF THE INTERSECTION DETECTION 
                                     # THIS IS PARTICULARILY USEFUL FOR OUR TURN FUNCTION
 
-# THE FOLLOWING DEFINITIONS WILL HELP KEEP TRACK OF THE CODES RETURNED FROM THE FUNCTION
-# THAT TRIES TO DETECTS FACES.
+# THE FOLLOWING DEFINITIONS WILL HELP KEEP TRACK OF THE CODES RETURNED FROM THE FACE DETECTION FUNCTION.
+LOOKING_TIMEOUT       = 3   # THE AMOUNT OF SECONDS TO LOOK AT A DIRECTION FOR FACE DETECTION [s]
+
 NO_FACE_DETECTED      = 0
 FACE_DETECTED_LEFT    = 1
 FACE_DETECTED_FORWARD = 2
 FACE_DETECTED_RIGHT   = 3
-LOOKING_TIMEOUT       = 3   # Seconds
 
 # THE FOLLOWING WILL HELP IN KEEPING THE CURRENT DIRECTION OF THE ROBOT
 NORTH = 0
 EAST  = 1
 SOUTH = 2
 WEST  = 3
-# ITS INITIAL DIRECTION WILL ALWAYS BE ASSUMED AS NORTH! NO MATTER WHAT, IN OUR SETUP!!!
+
+# ITS INITIAL DIRECTION WILL ALWAYS BE ASSUMED AS NORTH! NO MATTER WHAT; IN MY SETUP!!!
 CUR_DIR = NORTH 
 
-# THE FOLLOWING WILL HELP IN KEEPING THE STATE OF THE STATE MACHINE
+# THE FOLLOWING WILL HELP KEEP TRACK OF THE STATE MACHINE STATE
 IDLE             = 0
 FOLLOW_LINE      = 1
 CHANGE_DIRECTION = 2
-# THE INITIAL STATE WILL BE IDLE
-STATE = IDLE
+STATE = IDLE            # THE INITIAL STATE WILL BE IDLE
 
+# THE FOLLOWING WILL STORE THE RECENT VALUES THE IR SENSORS
 FAR_LEFT_IR_VAL  = 0
 LEFT_IR_VAL      = 0
 RIGHT_IR_VAL     = 0
@@ -86,12 +99,12 @@ def followLine(MODE):
         # OR ESCAPED THE LINE
         if(LEFT_IR_VAL == NO_TAPE_DETECTED) and (RIGHT_IR_VAL == NO_TAPE_DETECTED):
             rc.stop()                       # THUS, STOP THE MOTOR
-            return NO_MORE_LINE_RETURN      # AND RETURN WITH THE CODE FOR NO MORE LINE 
+            return NO_MORE_LINE_DETECTED    # AND RETURN WITH THE CODE FOR NO MORE LINE 
 
         # IF TAPE IS DETECTED ON THE FAR LEFT OR FAR RIGHT IR SENSORS THEN WE'VE REACHED AN INTERSECTION
         elif (FAR_LEFT_IR_VAL == TAPE_DETECTED) or (FAR_RIGHT_IR_VAL == TAPE_DETECTED):
-            rc.stop()                     # THUS, STOP THE ROBOT
-            return INTERSECTION_RETURN    # AND RETURN WITH THE CODE FOR INTERSECTION
+            rc.stop()                       # THUS, STOP THE ROBOT
+            return INTERSECTION_DETECTED    # AND RETURN WITH THE CODE FOR INTERSECTION
 
         # HOWEVER, IF WE'RE NOT AT AN INTERSECTION YET AND THERE'S A LINE STILL, KEEP TRYING TO FOLLOW THE LINE
         else:
@@ -191,10 +204,15 @@ def detectFace(angle):
         gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)       # CONVERT FRAME TO GRAY SCALE
         faces = face_cascade.detectMultiScale(gray,1.1,4)   # DETECT FACES
 
+        for (x, y, w, h) in faces:
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+
+        cv2.imshow('FRAME', frame)
         # IF A FACE IS DETECTED, RETURN CODE 1
         if len(faces) != 0:
             return 1    
 
+    cv2.DestroyAllWindows()
     # IF NO FACE WAS DETECTED, RETURN CODE 0
     return 0    
 
@@ -203,28 +221,56 @@ def lookForFace():
     # FIRST LET'S LOOK FORWARD
     ret = detectFace(90)
     if ret == 1:
+        print("FACE_DETECTED_FORWARD :)")
         return FACE_DETECTED_FORWARD
 
     # THEN THE LEFT SIDE
     ret = detectFace(180)
     if ret == 1:
+        print("FACE_DETECTED_LEFT :)")
         return FACE_DETECTED_LEFT
 
     # THEN THE RIGHT SIDE
     ret = detectFace(0)
     if ret == 1:
+        print("FACE_DETECTED_RIGHT :)")
         return FACE_DETECTED_RIGHT
 
+    print("NO_FACE_DETECTED :(")
     # IF NO FACE WAS DETECTED JUST RETURN WITH THE NO_FACE_DETECTED CODE
     return NO_FACE_DETECTED
 
+#====================================================#
+# DETECT FORWARD LINE
+#====================================================#
+def detectForwardLine():
+    # SO MOVE WITH SLOW SPEED
+    rc.moveForward(50)
+    # FOR A TINY AMOUNT OF TIME
+    time.sleep(FORWARD_LINE_DETECTION_TIMEOUT)
+    # STOP ROBOT
+    rc.stop()
 
+    # READ MID SENSORS. IF EVEN JUST ONE OF THEM RETURN TRUE
+    # THEN IT MEANS WE HAVE DETECTED A LINE FORWARD
+    if((rc.readLeftIR==TAPE_DETECTED) or (rc.readRightIR()==TAPE_DETECTED)):
+        return FORWARD_LINE_DETECTED
+
+    # IF NO LINE IS READ THEN JUST RETURN FALSE
+    return NOTHING_DETECTED
+
+#====================================================#
+# HELPER FUNCTIONS TO SEE IF CAMERA CAN DETECT A FACE
+#====================================================#
 def main():
     global CUR_DIR, STATE
     
     # INITIALIZE VARIABLES
-    CUR_DIR = NORTH
-    STATE   = 0
+    TURN_DIR = NONE                                 # STORES THE TURNING DIRECTION
+    BIAS     = RIGHT                                # STORES THE BIAS DIRECTION WE WANT TO TURN IN
+    CUR_DIR  = NORTH                                # STORES THE CURRENT FACING DIRECTION OF THE ROBOT, ALWAYS INITIATES TO NORTH
+    STATE    = 0                                    # STORES THE STATE OF THE STATE MACHINE
+    LINE_FOLLOWING_MODE = DEFAULT_LINE_FOLLOWING    # STORES THE LINE FOLLOWING MODE WE WANT TO USE
 
     # INITIALIZE ROBOT
     rc.init()
@@ -250,33 +296,137 @@ def main():
         # LINE FOLLOWING STATE
         #===================================#
         if(STATE == FOLLOW_LINE):
-            ret = followLine(DEFAULT_LINE_FOLLOWING)
+            ret = followLine(LINE_FOLLOWING_MODE)
 
             # IF WE DETECTED AN INTERSECTION
-            if ret == INTERSECTION_RETURN:
-                # CHECK IF THE INTERSECTION HAS A RIGHT TURN
-                if (FAR_RIGHT_IR_VAL == TAPE_DETECTED):
-                    turn(RIGHT)
-                    CUR_DIR = (CUR_DIR+1)%4
-                else:
-                    rc.moveForward(50)
-                    time.sleep(0.01)
-                    rc.stop()
+            if ret == INTERSECTION_DETECTED:
+                # FIRST THING TO DO IS CHECK IF THE CAMERA SEES A FACE IN ANY OF THE DIRECTIONS
+                ret = lookForFace()
+                # IF THERE'S ONE DETECTED FOWARD
+                if ret == FACE_DETECTED_FORWARD:
+                    # LET'S BIAS NO TURN TO OCCUR
+                    BIAS = FORWARD
+                
+                # IF THERE'S ONE DETECTED LEFT
+                elif ret == FACE_DETECTED_LEFT:
+                    # LET'S BIAS THE ROBOT TO TURN LEFT
+                    BIAS = LEFT
 
-                    
-            
-            # IF NO LINE WAS DETECTED, WE MUST HAVE LEFT LINE
-            elif ret == NO_MORE_LINE_RETURN:
+                # IF THERE'S ONE DETECTED RIGHT
+                elif ret == FACE_DETECTED_RIGHT:
+                    # LET'S BIAS THE ROBOT TO TURN RIGH
+                    BIAS = RIGHT
+                
+                # OTHERWISE, WE WILL ALWAYS BIAS TO GO RIGHT
+                else:
+                    BIAS = RIGHT
+
+
+                if BIAS == FORWARD:
+                    # CHECK IF THERE'S A LINE FORWARD 
+                    ret = detectForwardLine()
+                    # IF THERE IS A LINE, JUST CONTINUE FOLLOWING THE LINE
+                    # SO DON'T CHANGE STATE, !!! THERE IS NO NEED TO DO THE FOLLOWING, 
+                    # BECAUSE WE ARE ALREADY IN THE LINE FOLLOWING STATE. I AM JUST 
+                    # DOING IT FOR CODE DECIPHERING CLARITY !!!
+                    if ret == FORWARD_LINE_DETECTED:
+                        STATE = FOLLOW_LINE
+
+                    # IF NOT,
+                    else:
+                        # CHECK IF THE INTERSECTION HAS A RIGHT TURN
+                        # IF IT DOES
+                        if (FAR_RIGHT_IR_VAL == TAPE_DETECTED):
+                            TURN_DIR = RIGHT            # SET THE TURNING DIRECTION TO RIGHT
+                            STATE = CHANGE_DIRECTION    # THEN CHANGE STATE TO CHANGE_DIRECTION
+                        
+                        # OTHERWISE, IF THERE'S NOTHING, THEN IT MEANS THAT THERE
+                        # WAS ONLY A LEFT TURN AT THIS INTERSECTION SO
+                        # LET'S TURN LEFT
+                        elif ret == NOTHING_DETECTED:
+                            TURN_DIR = LEFT             # THUS, SET THE TURNING DIRECTION TO LEFT
+                            STATE = CHANGE_DIRECTION    # THEN CHANGE STATE TO CHANGE_DIRECTION
+
+
+                if BIAS == RIGHT:
+                    # CHECK IF THE INTERSECTION HAS A RIGHT TURN
+                    # IF IT DOES
+                    if (FAR_RIGHT_IR_VAL == TAPE_DETECTED):
+                        TURN_DIR = RIGHT            # SET THE TURNING DIRECTION TO RIGHT
+                        STATE = CHANGE_DIRECTION    # THEN CHANGE STATE TO CHANGE_DIRECTION
+                        
+                    # IF NOT,
+                    else:
+                        # CHECK IF THERE'S A LINE FORWARD 
+                        ret = detectForwardLine()
+                        # IF THERE IS A LINE, JUST CONTINUE FOLLOWING THE LINE
+                        # SO DON'T CHANGE STATE, !!! THERE IS NO NEED TO DO THE FOLLOWING, 
+                        # BECAUSE WE ARE ALREADY IN THE LINE FOLLOWING STATE. I AM JUST 
+                        # DOING IT FOR CODE DECIPHERING CLARITY !!!
+                        if ret == FORWARD_LINE_DETECTED:
+                            STATE = FOLLOW_LINE
+
+                        # OTHERWISE, IF THERE'S NOTHING, THEN IT MEANS THAT THERE
+                        # WAS ONLY A LEFT TURN AT THIS INTERSECTION SO
+                        # LET'S TURN LEFT
+                        elif ret == NOTHING_DETECTED:
+                            TURN_DIR = LEFT             # THUS, SET THE TURNING DIRECTION TO LEFT
+                            STATE = CHANGE_DIRECTION    # THEN CHANGE STATE TO CHANGE_DIRECTION
+
+                elif BIAS == LEFT:
+                    # CHECK IF THE INTERSECTION HAS A LEFT TURN
+                    # IF IT DOES
+                    if (FAR_LEFT_IR_VAL == TAPE_DETECTED):
+                        TURN_DIR = LEFT             # SET THE TURNING DIRECTION TO LEFT
+                        STATE = CHANGE_DIRECTION    # THEN CHANGE STATE TO CHANGE_DIRECTION
+                        
+                    # IF NOT,
+                    else:
+                        # CHECK IF THERE'S A LINE FORWARD 
+                        ret = detectForwardLine()
+                        # IF THERE IS A LINE, JUST CONTINUE FOLLOWING THE LINE
+                        # SO DON'T CHANGE STATE, !!! THERE IS NO NEED TO DO THE FOLLOWING, 
+                        # BECAUSE WE ARE ALREADY IN THE LINE FOLLOWING STATE. I AM JUST 
+                        # DOING IT FOR CODE DECIPHERING CLARITY !!!
+                        if ret == FORWARD_LINE_DETECTED:
+                            STATE = FOLLOW_LINE
+
+                        # OTHERWISE, IF THERE'S NOTHING, THEN IT MEANS THAT THERE
+                        # WAS ONLY A RIGHT TURN AT THIS INTERSECTION SO
+                        # LET'S TURN RIGHT
+                        elif ret == NOTHING_DETECTED:
+                            TURN_DIR = RIGHT            # THUS, SET THE TURNING DIRECTION TO LEFT
+                            STATE = CHANGE_DIRECTION    # THEN CHANGE STATE TO CHANGE_DIRECTION
+
+
+            # IF NO LINE WAS DETECTED, WE MUST HAVE LEFT THE LINE
+            # WITCH POTENTIALLY MEANS THAT WE'RE AT A DEAD END, OR
+            # THE LINE FOLLOWING MESSED UP AND LEFT THE LINE!!
+            # WE'LL ASSUME THAT THERE WE REACHED A DEAD END FOR NOW
+            elif ret == NO_MORE_LINE_DETECTED:
+                TURN_DIR = BACK             # IF SO, SET THE TURNING DIRECTION TO BACK
+                STATE = CHANGE_DIRECTION    # THEN CHANGE STATE TO CHANGE_DIRECTION
                 pass
 
         #===================================#
         # DIRECTION CHANGING STATE
         #===================================#
         if(STATE == CHANGE_DIRECTION):
-            pass
+            if(TURN_DIR == RIGHT):
+                turn(rc.CW)
+                CUR_DIR = (CUR_DIR+1)%4
+
+            elif(TURN_DIR == LEFT):
+                turn(rc.CCW)
+                CUR_DIR = (CUR_DIR-1)%4
+
+            elif(TURN_DIR == BACK):
+                turn(RIGHT)
+                CUR_DIR = (CUR_DIR+2)%4
+
+            # ONCE, WE'RE DONE CHANGING DIRECTION
+            # GO BACK TO LINE FOLLOWING
+            STATE = FOLLOW_LINE
     
-
-
-
 if __name__ == "__main__":
     main()
