@@ -156,6 +156,31 @@ def init():
     GPIO.set_mode(R_IR2,INPUT)
     
 #===================================#
+# MOVE INDIVIDUAL MOTORS FUNCTIONS
+#===================================#
+# LEFT MOTOR
+def moveLeftForward(dutyCycle):
+    GPIO.write(AIN1,LOW)
+    GPIO.write(AIN2,HIGH)
+    GPIO.set_PWM_dutycycle(PWMA,dutyCycle)
+
+def moveLeftBackward(dutyCycle):
+    GPIO.write(AIN1,HIGH)
+    GPIO.write(AIN2,LOW)
+    GPIO.set_PWM_dutycycle(PWMA,dutyCycle)
+
+# RIGHT MOTOR
+def moveRightForward(dutyCycle):
+    GPIO.write(BIN1,LOW)
+    GPIO.write(BIN2,HIGH)
+    GPIO.set_PWM_dutycycle(PWMB,dutyCycle)
+
+def moveRightBackward(dutyCycle):
+    GPIO.write(BIN1,HIGH)
+    GPIO.write(BIN2,LOW)
+    GPIO.set_PWM_dutycycle(PWMB,dutyCycle)
+
+#===================================#
 # MOVE FORWARD FUNCTIONS
 #===================================#
 def moveForward(dutyCycle):
