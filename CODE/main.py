@@ -9,8 +9,9 @@ import time
 # FOR OPENCV FACE DETECTION
 #===================================#
 # Load the cascade
-face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml') # Load Cascade 
-cap = cv2.VideoCapture(0)                                                   # Camera Capture for 
+face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml') # LOAD CASCADE CLASSIFIER
+cap          = cv2.VideoCapture(0)                                          # CAMERA CAPTURE FOR THE USB CAM
+DEBUG        = 1                                                            # SET THIS TO ONE WHEN WE WANT TO DISPLAY THE CAMERA WHEN IT DETECTS FACES
 #===================================#
 # VARIABLES
 #===================================#
@@ -20,7 +21,7 @@ START_WAITING_TIME = 5  # THE AMOUNT OF SECONDS TO WAIT BEFORE STARTING AFTER TH
 TAPE_DETECTED    = 1    # VALUE OF IR WHEN TAPE IS BELOW
 NO_TAPE_DETECTED = 0    # VALUE OF IR WHEN NO TAPE IS BELOW
 
-# THE FOLLOWING WILL HELP KEEP TRACK OF THE SPEED WHEN THE ROBOT IS MOVING FORWARD
+# THE FOLLOWING WILL HELP KEEP TRA CK OF THE SPEED WHEN THE ROBOT IS MOVING FORWARD
 FORWARD_SPEED    = 120  # THIS IS THE SPEED OF THE WHEELS WHEN THE ROBOT MOVES FORWARD
 NO_TAPE_OFFSET   = 10   # WHAT TO OFFSET THE WHEELS SPEED WITH WHEN STARTS TO LEAVE THE TAPE
 
@@ -200,19 +201,22 @@ def detectFace(angle):
     start_time = time.time()
     # TRY TO SEE IF WE CAN DETECT A FACE FOR A CERTAIN TIME LIMIT
     while ((time.time()-start_time)<LOOKING_TIMEOUT):
-        _,frame = cap.read()                                # READ FRAME
-        gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)       # CONVERT FRAME TO GRAY SCALE
-        faces = face_cascade.detectMultiScale(gray,1.1,4)   # DETECT FACES
+        _,frame = cap.read()                                                # READ FRAME
+        gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)                       # CONVERT FRAME TO GRAY SCALE
+        faces = face_cascade.detectMultiScale(gray,1.5,5,minSize=(190,190)) # DETECT FACES OF MIN SIZE 190x190 PIXELS
 
-        for (x, y, w, h) in faces:
-            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+        if DEBUG:
+            for (x, y, w, h) in faces:
+                cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+            cv2.imshow('FRAME', frame)
 
-        cv2.imshow('FRAME', frame)
         # IF A FACE IS DETECTED, RETURN CODE 1
         if len(faces) != 0:
             return 1    
 
-    cv2.DestroyAllWindows()
+    if DEBUG:
+        cv2.DestroyAllWindows()
+        
     # IF NO FACE WAS DETECTED, RETURN CODE 0
     return 0    
 

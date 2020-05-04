@@ -20,8 +20,8 @@ FOLLOW_LINE_NO_DETECTION_TEST_TIME  = 5     # TEST TIME FOR NO_DETECTION_LINE_FO
 if TEST_IR:
     start = time.time()
     while((time.time()-start)<IR_TEST_TIME):
-        mn.readIR()
-        print(mn.FAR_LEFT_IR_VAL, mn.LEFT_IR_VAL, mn.RIGHT_IR_VAL, mn.FAR_RIGHT_IR_VAL)
+        mn.readIR()                                                                         # READ THE IR SENSORS
+        print(mn.FAR_LEFT_IR_VAL, mn.LEFT_IR_VAL, mn.RIGHT_IR_VAL, mn.FAR_RIGHT_IR_VAL)     # PRINT THE VALUES
 
 
 #===================================#
