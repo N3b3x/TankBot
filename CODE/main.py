@@ -103,7 +103,7 @@ def followLine(MODE):
     if (MODE==DEFAULT_LINE_FOLLOWING):
         # IF BOTH OF THE MIDDLE SENSORS DETECT NO TAPE, WE MUST HAVE REACHED THE END OF A LINE
         # OR ESCAPED THE LINE
-        if(LEFT_IR_VAL == NO_TAPE_DETECTED) and (RIGHT_IR_VAL == NO_TAPE_DETECTED):
+        if(LEFT_IR_VAL == NO_TAPE_DETECTED) and (RIGHT_IR_VAL == NO_TAPE_DETECTED) and (FAR_LEFT_IR_VAL == NO_TAPE_DETECTED) or (FAR_RIGHT_IR_VAL == NO_TAPE_DETECTED):
             print("NO MORE LINE DETECTED")
             rc.stop()                       # THUS, STOP THE MOTOR
             return NO_MORE_LINE_DETECTED    # AND RETURN WITH THE CODE FOR NO MORE LINE 
@@ -345,21 +345,21 @@ def main():
             # IF WE DETECTED AN INTERSECTION
             if ret == INTERSECTION_DETECTED:
                 # FIRST THING TO DO IS CHECK IF THE CAMERA SEES A FACE IN ANY OF THE DIRECTIONS
-                ret = lookForFace()
+                ret2 = lookForFace()
                 # IF THERE'S ONE DETECTED FOWARD
-                if ret == FACE_DETECTED_FORWARD:
+                if ret2 == FACE_DETECTED_FORWARD:
                     # LET'S BIAS NO TURN TO OCCUR
                     BIAS   = FORWARD
                     ATTACK = 1
                 
                 # IF THERE'S ONE DETECTED LEFT
-                elif ret == FACE_DETECTED_LEFT:
+                elif ret2 == FACE_DETECTED_LEFT:
                     # LET'S BIAS THE ROBOT TO TURN LEFT
                     BIAS   = LEFT
                     ATTACK = 1
 
                 # IF THERE'S ONE DETECTED RIGHT
-                elif ret == FACE_DETECTED_RIGHT:
+                elif ret2 == FACE_DETECTED_RIGHT:
                     # LET'S BIAS THE ROBOT TO TURN RIGH
                     BIAS   = RIGHT
                     ATTACK = 1
@@ -372,12 +372,12 @@ def main():
 
                 if BIAS == FORWARD:
                     # CHECK IF THERE'S A LINE FORWARD 
-                    ret = detectForwardLine()
+                    ret3 = detectForwardLine()
                     # IF THERE IS A LINE, JUST CONTINUE FOLLOWING THE LINE
                     # SO DON'T CHANGE STATE, !!! THERE IS NO NEED TO DO THE FOLLOWING, 
                     # BECAUSE WE ARE ALREADY IN THE LINE FOLLOWING STATE. I AM JUST 
                     # DOING IT FOR CODE DECIPHERING CLARITY !!!
-                    if ret == FORWARD_LINE_DETECTED:
+                    if ret3 == FORWARD_LINE_DETECTED:
                         STATE = FOLLOW_LINE
 
                     # IF NOT,
@@ -391,7 +391,7 @@ def main():
                         # OTHERWISE, IF THERE'S NOTHING, THEN IT MEANS THAT THERE
                         # WAS ONLY A LEFT TURN AT THIS INTERSECTION SO
                         # LET'S TURN LEFT
-                        elif ret == NOTHING_DETECTED:
+                        elif ret3 == NOTHING_DETECTED:
                             TURN_DIR = LEFT             # THUS, SET THE TURNING DIRECTION TO LEFT
                             STATE = CHANGE_DIRECTION    # THEN CHANGE STATE TO CHANGE_DIRECTION
 
@@ -406,18 +406,18 @@ def main():
                     # IF NOT,
                     else:
                         # CHECK IF THERE'S A LINE FORWARD 
-                        ret = detectForwardLine()
+                        ret4 = detectForwardLine()
                         # IF THERE IS A LINE, JUST CONTINUE FOLLOWING THE LINE
                         # SO DON'T CHANGE STATE, !!! THERE IS NO NEED TO DO THE FOLLOWING, 
                         # BECAUSE WE ARE ALREADY IN THE LINE FOLLOWING STATE. I AM JUST 
                         # DOING IT FOR CODE DECIPHERING CLARITY !!!
-                        if ret == FORWARD_LINE_DETECTED:
+                        if ret4 == FORWARD_LINE_DETECTED:
                             STATE = FOLLOW_LINE
 
                         # OTHERWISE, IF THERE'S NOTHING, THEN IT MEANS THAT THERE
                         # WAS ONLY A LEFT TURN AT THIS INTERSECTION SO
                         # LET'S TURN LEFT
-                        elif ret == NOTHING_DETECTED:
+                        elif ret4 == NOTHING_DETECTED:
                             TURN_DIR = LEFT             # THUS, SET THE TURNING DIRECTION TO LEFT
                             STATE = CHANGE_DIRECTION    # THEN CHANGE STATE TO CHANGE_DIRECTION
 
@@ -431,18 +431,18 @@ def main():
                     # IF NOT,
                     else:
                         # CHECK IF THERE'S A LINE FORWARD 
-                        ret = detectForwardLine()
+                        ret5 = detectForwardLine()
                         # IF THERE IS A LINE, JUST CONTINUE FOLLOWING THE LINE
                         # SO DON'T CHANGE STATE, !!! THERE IS NO NEED TO DO THE FOLLOWING, 
                         # BECAUSE WE ARE ALREADY IN THE LINE FOLLOWING STATE. I AM JUST 
                         # DOING IT FOR CODE DECIPHERING CLARITY !!!
-                        if ret == FORWARD_LINE_DETECTED:
+                        if ret5 == FORWARD_LINE_DETECTED:
                             STATE = FOLLOW_LINE
 
                         # OTHERWISE, IF THERE'S NOTHING, THEN IT MEANS THAT THERE
                         # WAS ONLY A RIGHT TURN AT THIS INTERSECTION SO
                         # LET'S TURN RIGHT
-                        elif ret == NOTHING_DETECTED:
+                        elif ret5 == NOTHING_DETECTED:
                             TURN_DIR = RIGHT            # THUS, SET THE TURNING DIRECTION TO LEFT
                             STATE = CHANGE_DIRECTION    # THEN CHANGE STATE TO CHANGE_DIRECTION
 
