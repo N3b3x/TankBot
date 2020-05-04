@@ -232,7 +232,7 @@ def moveBackward(dutyCycle):
 # ROTATE FUNCTIONS
 # dir = 0 -> CW, 1 -> CCW
 #===================================#
-def rotate(dir,dutyCycle):
+def rotate(dir,dutyCycle,rightOffset=0):
     global robot_state, GPIO
     # set the robot's state
     robot_state = ROTATING
@@ -261,7 +261,7 @@ def rotate(dir,dutyCycle):
     # SET THE SPEED
     #=============================#
     GPIO.set_PWM_dutycycle(PWMA,dutyCycle)
-    GPIO.set_PWM_dutycycle(PWMB,dutyCycle)
+    GPIO.set_PWM_dutycycle(PWMB,dutyCycle+rightOffset)
 
 #===================================#
 # STOP FUNCTIONS

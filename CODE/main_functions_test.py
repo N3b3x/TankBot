@@ -1,13 +1,16 @@
 import main as mn
 import time
 
+mn.rc.init()
+mn.rc.stop()
+
 # ENABLE WHEN A SPECIFIC PART IS TO BE TESTED
-TEST_IR                         = 1
-TEST_DEFAULT_FOLLOW_LINE        = 0
-TEST_NO_DETECTION_FOLLOW_LINE   = 0
-TEST_FORWARD_LINE_DETECTION     = 0
-TEST_TURN                       = 0
-TEST_FACE_DETECTION             = 0
+TEST_IR                         = 0 # [GOOD]
+TEST_DEFAULT_FOLLOW_LINE        = 0 # [GOOD]
+TEST_NO_DETECTION_FOLLOW_LINE   = 0 # [GOOD]
+TEST_FORWARD_LINE_DETECTION     = 0 # [GOOD]
+TEST_TURN                       = 0 # [GOOD]
+TEST_FACE_DETECTION             = 0 # [GOOD]
 TEST_MAIN                       = 0
 
 # TEST TIMES FOR THE ONES THAT REQUIRE IT
@@ -15,7 +18,7 @@ IR_TEST_TIME                        = 5     # TEST TIME FOR ALL WHILE LOOPS [s]
 FOLLOW_LINE_NO_DETECTION_TEST_TIME  = 5     # TEST TIME FOR NO_DETECTION_LINE_FOLLOWING
 
 #===================================#
-# TEST READ IR
+# TEST READ IR [GOOD]
 #===================================#
 if TEST_IR:
     start = time.time()
@@ -34,7 +37,7 @@ if TEST_DEFAULT_FOLLOW_LINE:
 
 if TEST_NO_DETECTION_FOLLOW_LINE:
     start = time.time()
-    while((time.time()-start)<FOLLOW_LINE_NO_DETECTION_TEST_TIME):
+    while((time.time()-start)<0.75):
         mn.followLine(mn.NO_DETECTION_LINE_FOLLOWING)
 
 #===================================#
@@ -81,7 +84,7 @@ if TEST_TURN:
         mn.turn(mn.rc.CW)
 
 #===================================#
-# TEST FACE DETECTION
+# TEST FACE DETECTION [GOOD]
 #===================================#
 if TEST_FACE_DETECTION:
     ret = mn.lookForFace()
@@ -98,3 +101,5 @@ if TEST_FACE_DETECTION:
 #===================================#
 if TEST_MAIN:
     mn.main()
+
+mn.rc.stop()

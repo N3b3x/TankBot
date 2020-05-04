@@ -18,18 +18,23 @@ DEBUG        = 1                                                            # SE
 START_WAITING_TIME = 5  # THE AMOUNT OF SECONDS TO WAIT BEFORE STARTING AFTER THE START BUTTON IS PRESSED
 
 # THE FOLLOWING WILL HELP KEEP TRACK OF THE RETURNED VALUE FROM THE IR SENSORS
-TAPE_DETECTED    = 1    # VALUE OF IR WHEN TAPE IS BELOW
-NO_TAPE_DETECTED = 0    # VALUE OF IR WHEN NO TAPE IS BELOW
+TAPE_DETECTED    = 0    # VALUE OF IR WHEN TAPE IS BELOW
+NO_TAPE_DETECTED = 1    # VALUE OF IR WHEN NO TAPE IS BELOW
 
 # THE FOLLOWING WILL HELP KEEP TRA CK OF THE SPEED WHEN THE ROBOT IS MOVING FORWARD
-FORWARD_SPEED    = 120  # THIS IS THE SPEED OF THE WHEELS WHEN THE ROBOT MOVES FORWARD
-NO_TAPE_OFFSET   = 10   # WHAT TO OFFSET THE WHEELS SPEED WITH WHEN STARTS TO LEAVE THE TAPE
+FORWARD_SPEED    = 60  # THIS IS THE SPEED OF THE WHEELS WHEN THE ROBOT MOVES FORWARD
+NO_TAPE_OFFSET   = 20   # WHAT TO OFFSET THE WHEELS SPEED WITH WHEN STARTS TO LEAVE THE TAPE
 
 # THE FOLLOWING WILL HELP KEEP TRACK OF THE SPEED WHEN THE ROBOT IS ROTATING
-FORWARD_FOR_TURN_TIMEOUT        = 1     # THE AMOUNT OF SECONDS TO MOVE FORWARD RIGHT BEFORE ROTATING [s]
+FORWARD_FOR_TURN_TIMEOUT        = 0.85  # THE AMOUNT OF SECONDS TO MOVE FORWARD RIGHT BEFORE ROTATING [s]
 FORWARD_LINE_DETECTION_TIMEOUT  = 0.01  # THE AMOUNT OF SECONDS TO MOVE FORWARD TO SEE IF THE LINE CONTINUES FORWARD AFTER REACHING AN INTERSECTION [s]
-ROTATE_SPEED                    = 100   # THIS IS THE SPEED OF THE WHEELS WHEN ROBOT ROTATES
-ROTATE_SPEED_OFFSET             = 10    # WHAT TO OFFSET THE WHEELS SPEED WITH WHEN WE DETECT A LINE ON THE FAR OUT IR SENSORS
+
+
+ROTATE_SPEED_L                  = 70   # THIS IS THE SPEED OF THE WHEELS WHEN ROBOT ROTATES
+ROTATE_SPEED_R                  = 90   # THIS IS THE SPEED OF THE WHEELS WHEN ROBOT ROTATES
+ROTATE_RIGHT_OFFSET             = ROTATE_SPEED_R - ROTATE_SPEED_L
+
+ROTATE_SPEED_OFFSET             = 30    # WHAT TO OFFSET THE WHEELS SPEED WITH WHEN WE DETECT A LINE ON THE FAR OUT IR SENSORS
 
 # THE FOLLOWING WILL HELP KEEP TRACK OF THE BIAS AND TURNING DIRECTIONS
 NONE    = 0
@@ -50,7 +55,7 @@ NO_DETECTION_LINE_FOLLOWING = 1     # THIS MODE IS FOR WHEN WE WANT TO FOLLOW TH
                                     # THIS IS PARTICULARILY USEFUL FOR OUR TURN FUNCTION
 
 # THE FOLLOWING DEFINITIONS WILL HELP KEEP TRACK OF THE CODES RETURNED FROM THE FACE DETECTION FUNCTION.
-LOOKING_TIMEOUT       = 3   # THE AMOUNT OF SECONDS TO LOOK AT A DIRECTION FOR FACE DETECTION [s]
+LOOKING_TIMEOUT       = 2   # THE AMOUNT OF SECONDS TO LOOK AT A DIRECTION FOR FACE DETECTION [s]
 
 NO_FACE_DETECTED      = 0
 FACE_DETECTED_LEFT    = 1
@@ -169,25 +174,28 @@ def turn(dir):
     # THEN SLOWLY ROTATE IT, TILL BOTH INSIDE IR EMMITERS DETECT THE TAPE
     if (dir == rc.CW):
         # ROTATE TILL FAR RIGHT IR SENSOR DETECTS LINE SINCE WE'RE TURNING CW
+        rc.rotate(rc.CW,ROTATE_SPEED_L, ROTATE_RIGHT_OFFSET)
         while(rc.readFarRightIR() == NO_TAPE_DETECTED):
-            rc.rotate(rc.CW,ROTATE_SPEED)
-        
+            pass
+            
+        rc.rotate(rc.CW,ROTATE_SPEED_L-ROTATE_SPEED_OFFSET, ROTATE_RIGHT_OFFSET)
         # ROTATE SLOWER TILL BOTH OF INSIDE SENSORS DETECT THE LINE
         while((rc.readLeftIR() == NO_TAPE_DETECTED) or (rc.readRightIR() == NO_TAPE_DETECTED)):
-            rc.rotate(rc.CW,ROTATE_SPEED-ROTATE_SPEED_OFFSET)
+            pass
 
         # THEN STOP THE ROBOT
         rc.stop()
 
     elif (dir == rc.CCW):
         # ROTATE TILL FAR LEFT IR SENSOR DETECTS LINE SINCE WE'RE TURNING CCW
+        rc.rotate(rc.CCW,ROTATE_SPEED_L,ROTATE_RIGHT_OFFSET)
         while(rc.readFarLeftIR() == NO_TAPE_DETECTED):
-            rc.rotate(rc.CCW,ROTATE_SPEED)
+            pass
         
         # ROTATE SLOWER TILL BOTH OF INSIDE SENSORS DETECT THE LINE
+        rc.rotate(rc.CCW,ROTATE_SPEED_L-ROTATE_SPEED_OFFSET,ROTATE_RIGHT_OFFSET)
         while((rc.readLeftIR() == NO_TAPE_DETECTED) or (rc.readRightIR() == NO_TAPE_DETECTED)):
-            rc.rotate(rc.CCW,ROTATE_SPEED-ROTATE_SPEED_OFFSET)
-
+            pass
         # THEN STOP THE ROBOT
         rc.stop()
     
@@ -195,6 +203,7 @@ def turn(dir):
 # HELPER FUNCTIONS TO SEE IF CAMERA CAN DETECT A FACE
 #====================================================#
 def detectFace(angle):
+    rc.setCameraVertServo(100)
     rc.setCameraHorzServo(angle)                       # SET THE CAMERA TO LOOK AT THE LEFT SIDE
     time.sleep(0.01)                                   # LET'S GIVE IT 10MS TO GET THERE, JUST IN CASE IT'S NOT THERE
     
@@ -203,19 +212,24 @@ def detectFace(angle):
     while ((time.time()-start_time)<LOOKING_TIMEOUT):
         _,frame = cap.read()                                                # READ FRAME
         gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)                       # CONVERT FRAME TO GRAY SCALE
-        faces = face_cascade.detectMultiScale(gray,1.5,5,minSize=(190,190)) # DETECT FACES OF MIN SIZE 190x190 PIXELS
+        faces = face_cascade.detectMultiScale(gray,1.3,5,minSize=(190,190)) # DETECT FACES OF MIN SIZE 190x190 PIXELS
 
+        # IF DEBUG IS SET TO TRUE
         if DEBUG:
+            # ADD RECTANGLE WHERE THE FACES ARE ON THE IMAGE
             for (x, y, w, h) in faces:
                 cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+            # THEN SHOW FRAME
             cv2.imshow('FRAME', frame)
 
         # IF A FACE IS DETECTED, RETURN CODE 1
         if len(faces) != 0:
             return 1    
 
+    # IF DEBUG IS SET TO TRUE
     if DEBUG:
-        cv2.DestroyAllWindows()
+        # DESTROY ALL OPENED WINDOWS FROM OPENCV DEBUGGING WE'VE CREATED
+        cv2.destroyAllWindows()
         
     # IF NO FACE WAS DETECTED, RETURN CODE 0
     return 0    
@@ -226,20 +240,24 @@ def lookForFace():
     ret = detectFace(90)
     if ret == 1:
         print("FACE_DETECTED_FORWARD :)")
+        rc.setCameraHorzServo(90)                       # SET THE CAMERA TO LOOK AT THE CENTER
         return FACE_DETECTED_FORWARD
 
     # THEN THE LEFT SIDE
-    ret = detectFace(180)
+    ret = detectFace(160)
     if ret == 1:
         print("FACE_DETECTED_LEFT :)")
+        rc.setCameraHorzServo(90)                       # SET THE CAMERA TO LOOK AT THE CENTER
         return FACE_DETECTED_LEFT
 
     # THEN THE RIGHT SIDE
-    ret = detectFace(0)
+    ret = detectFace(20)
     if ret == 1:
         print("FACE_DETECTED_RIGHT :)")
+        rc.setCameraHorzServo(90)                       # SET THE CAMERA TO LOOK AT THE CENTER
         return FACE_DETECTED_RIGHT
 
+    rc.setCameraHorzServo(90)                       # SET THE CAMERA TO LOOK AT THE CENTER
     print("NO_FACE_DETECTED :(")
     # IF NO FACE WAS DETECTED JUST RETURN WITH THE NO_FACE_DETECTED CODE
     return NO_FACE_DETECTED
@@ -248,16 +266,17 @@ def lookForFace():
 # DETECT FORWARD LINE
 #====================================================#
 def detectForwardLine():
-    # SO MOVE WITH SLOW SPEED
-    rc.moveForward(50)
+    while((rc.readFarLeftIR() == TAPE_DETECTED) or (rc.readFarRightIR() == TAPE_DETECTED)):
+        # SO MOVE WITH SLOW SPEED
+        rc.moveForward(50)
     # FOR A TINY AMOUNT OF TIME
-    time.sleep(FORWARD_LINE_DETECTION_TIMEOUT)
+    #time.sleep(FORWARD_LINE_DETECTION_TIMEOUT)
     # STOP ROBOT
     rc.stop()
 
     # READ MID SENSORS. IF EVEN JUST ONE OF THEM RETURN TRUE
     # THEN IT MEANS WE HAVE DETECTED A LINE FORWARD
-    if((rc.readLeftIR==TAPE_DETECTED) or (rc.readRightIR()==TAPE_DETECTED)):
+    if((rc.readLeftIR()==TAPE_DETECTED) or (rc.readRightIR()==TAPE_DETECTED)):
         return FORWARD_LINE_DETECTED
 
     # IF NO LINE IS READ THEN JUST RETURN FALSE
