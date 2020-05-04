@@ -104,6 +104,7 @@ def followLine(MODE):
         # IF BOTH OF THE MIDDLE SENSORS DETECT NO TAPE, WE MUST HAVE REACHED THE END OF A LINE
         # OR ESCAPED THE LINE
         if(LEFT_IR_VAL == NO_TAPE_DETECTED) and (RIGHT_IR_VAL == NO_TAPE_DETECTED):
+            print("NO MORE LINE DETECTED")
             rc.stop()                       # THUS, STOP THE MOTOR
             return NO_MORE_LINE_DETECTED    # AND RETURN WITH THE CODE FOR NO MORE LINE 
 
@@ -122,14 +123,24 @@ def followLine(MODE):
             # ELSE IF ONLY THE LEFT IR IS NOT DETECTING A LINE
             elif LEFT_IR_VAL == NO_TAPE_DETECTED:
                 # SPEED UP THE LEFT SIDE, AND SLOW DOWN THE RIGHT SIDE
-                rc.moveLeftForward(FORWARD_SPEED+NO_TAPE_OFFSET)
-                rc.moveRightForward(FORWARD_SPEED-NO_TAPE_OFFSET)
+                #rc.moveLeftForward(FORWARD_SPEED+NO_TAPE_OFFSET)
+                #rc.moveRightForward(FORWARD_SPEED-NO_TAPE_OFFSET)
+                
+                # ROTATE CW WHILE NO TAPE IS DETECTED ON THE LEFT IR
+                while rc.readLeftIR() == NO_TAPE_DETECTED:
+                    rc.rotate(rc.CW, ROTATE_SPEED_L, ROTATE_RIGHT_OFFSET)
 
             # ELSE IF ONLY THE RIGHT IR IS NOT DETECTING A LINE
             elif RIGHT_IR_VAL == NO_TAPE_DETECTED:
                 # SPEED UP THE RIGHt SIDE, AND SLOW DOWN THE LEFT SIDE
-                rc.moveLeftForward(FORWARD_SPEED-NO_TAPE_OFFSET)
-                rc.moveRightForward(FORWARD_SPEED+NO_TAPE_OFFSET)
+                #rc.moveLeftForward(FORWARD_SPEED-NO_TAPE_OFFSET)
+                #rc.moveRightForward(FORWARD_SPEED+NO_TAPE_OFFSET)
+                
+                # ROTATE CCW WHILE NO TAPE IS DETECTED ON THE RIGHT IR
+                while rc.readRightIR() == NO_TAPE_DETECTED:
+                    rc.rotate(rc.CCW, ROTATE_SPEED_L, ROTATE_RIGHT_OFFSET)
+                    
+                    
     
 
     # IN THIS MODE, WE WILL ONLY FOLLOW THE LINE IF WE DETECT THE TAPE, OTHERWISE THE MOTORS WILL JUST MOVE FORWARD
@@ -147,12 +158,20 @@ def followLine(MODE):
             # SPEED UP THE LEFT SIDE, AND SLOW DOWN THE RIGHT SIDE
             rc.moveLeftForward(FORWARD_SPEED+NO_TAPE_OFFSET)
             rc.moveRightForward(FORWARD_SPEED-NO_TAPE_OFFSET)
+            
+            # ROTATE CW WHILE NO TAPE IS DETECTED ON THE LEFT IR
+            #while rc.readLeftIR() == NO_TAPE_DETECTED:
+            #        rc.rotate(rc.CW, ROTATE_SPEED_L, ROTATE_RIGHT_OFFSET)
 
         # ELSE IF ONLY THE RIGHT IR IS NOT DETECTING A LINE
         elif RIGHT_IR_VAL == NO_TAPE_DETECTED:
             # SPEED UP THE RIGHt SIDE, AND SLOW DOWN THE LEFT SIDE
             rc.moveLeftForward(FORWARD_SPEED-NO_TAPE_OFFSET)
             rc.moveRightForward(FORWARD_SPEED+NO_TAPE_OFFSET)
+            
+            # ROTATE CCW WHILE NO TAPE IS DETECTED ON THE RIGHT IR
+            #while rc.readRightIR() == NO_TAPE_DETECTED:
+            #        rc.rotate(rc.CCW, ROTATE_SPEED_L, ROTATE_RIGHT_OFFSET)
 
     return NOTHING_DETECTED
 
@@ -294,7 +313,9 @@ def main():
     CUR_DIR  = NORTH                                # STORES THE CURRENT FACING DIRECTION OF THE ROBOT, ALWAYS INITIATES TO NORTH
     STATE    = 0                                    # STORES THE STATE OF THE STATE MACHINE
     LINE_FOLLOWING_MODE = DEFAULT_LINE_FOLLOWING    # STORES THE LINE FOLLOWING MODE WE WANT TO USE
-
+    ATTACK   = 0
+    RETURN   = 0
+    
     # INITIALIZE ROBOT
     rc.init()
 
@@ -328,21 +349,25 @@ def main():
                 # IF THERE'S ONE DETECTED FOWARD
                 if ret == FACE_DETECTED_FORWARD:
                     # LET'S BIAS NO TURN TO OCCUR
-                    BIAS = FORWARD
+                    BIAS   = FORWARD
+                    ATTACK = 1
                 
                 # IF THERE'S ONE DETECTED LEFT
                 elif ret == FACE_DETECTED_LEFT:
                     # LET'S BIAS THE ROBOT TO TURN LEFT
-                    BIAS = LEFT
+                    BIAS   = LEFT
+                    ATTACK = 1
 
                 # IF THERE'S ONE DETECTED RIGHT
                 elif ret == FACE_DETECTED_RIGHT:
                     # LET'S BIAS THE ROBOT TO TURN RIGH
-                    BIAS = RIGHT
+                    BIAS   = RIGHT
+                    ATTACK = 1
                 
                 # OTHERWISE, WE WILL ALWAYS BIAS TO GO RIGHT
                 else:
-                    BIAS = RIGHT
+                    BIAS   = RIGHT
+                    ATTACK = 0
 
 
                 if BIAS == FORWARD:
@@ -427,9 +452,14 @@ def main():
             # THE LINE FOLLOWING MESSED UP AND LEFT THE LINE!!
             # WE'LL ASSUME THAT THERE WE REACHED A DEAD END FOR NOW
             elif ret == NO_MORE_LINE_DETECTED:
-                TURN_DIR = BACK             # IF SO, SET THE TURNING DIRECTION TO BACK
-                STATE = CHANGE_DIRECTION    # THEN CHANGE STATE TO CHANGE_DIRECTION
-                pass
+                print("ATTACK = ",ATTACK)
+                if ATTACK == 0:
+                    TURN_DIR = BACK             # IF SO, SET THE TURNING DIRECTION TO BACK
+                    STATE = CHANGE_DIRECTION    # THEN CHANGE STATE TO CHANGE_DIRECTION
+                else:
+                    STATE  = IDLE
+                    RETURN = 1
+                    rc.stop()
 
         #===================================#
         # DIRECTION CHANGING STATE
