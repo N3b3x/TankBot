@@ -1,6 +1,0 @@
-pip3 install opencv-python
-pip3 install opencv-contrib-python
-pip3 install pigpio
-
-
-LD_PRELOAD=/usr/lib/arm-linux-gnueabihf/libatomic.so.1 thonny &
