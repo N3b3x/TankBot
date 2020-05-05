@@ -42,6 +42,7 @@ for a in range(90):
 #===================================#
 # TEST LED
 #===================================#
+'''
 for DUTY in range(256):
     rc.setLED(DUTY,DUTY,DUTY)
     time.sleep(0.01)
@@ -50,7 +51,7 @@ for duty in range(256):
     DUTY = 255-duty
     rc.setLED(DUTY,DUTY,DUTY)
     time.sleep(0.01)
-    
+    '''
 #===================================#
 # TEST ULTRASONIC SENSOR
 #===================================#

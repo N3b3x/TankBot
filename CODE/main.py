@@ -22,16 +22,17 @@ TAPE_DETECTED    = 0    # VALUE OF IR WHEN TAPE IS BELOW
 NO_TAPE_DETECTED = 1    # VALUE OF IR WHEN NO TAPE IS BELOW
 
 # THE FOLLOWING WILL HELP KEEP TRA CK OF THE SPEED WHEN THE ROBOT IS MOVING FORWARD
-FORWARD_SPEED    = 60  # THIS IS THE SPEED OF THE WHEELS WHEN THE ROBOT MOVES FORWARD
+FORWARD_SPEED    = 50  # THIS IS THE SPEED OF THE WHEELS WHEN THE ROBOT MOVES FORWARD
 NO_TAPE_OFFSET   = 20   # WHAT TO OFFSET THE WHEELS SPEED WITH WHEN STARTS TO LEAVE THE TAPE
 
 # THE FOLLOWING WILL HELP KEEP TRACK OF THE SPEED WHEN THE ROBOT IS ROTATING
-FORWARD_FOR_TURN_TIMEOUT        = 0.85  # THE AMOUNT OF SECONDS TO MOVE FORWARD RIGHT BEFORE ROTATING [s]
+FORWARD_FOR_TURN_TIMEOUT        = 0.75  # THE AMOUNT OF SECONDS TO MOVE FORWARD RIGHT BEFORE ROTATING [s]
 FORWARD_LINE_DETECTION_TIMEOUT  = 0.01  # THE AMOUNT OF SECONDS TO MOVE FORWARD TO SEE IF THE LINE CONTINUES FORWARD AFTER REACHING AN INTERSECTION [s]
+LINE_FOLLOWING_TURN_TIMEOUT     = 0.2
 
 
-ROTATE_SPEED_L                  = 70   # THIS IS THE SPEED OF THE WHEELS WHEN ROBOT ROTATES
-ROTATE_SPEED_R                  = 90   # THIS IS THE SPEED OF THE WHEELS WHEN ROBOT ROTATES
+ROTATE_SPEED_L                  = 60   # THIS IS THE SPEED OF THE WHEELS WHEN ROBOT ROTATES
+ROTATE_SPEED_R                  = 80   # THIS IS THE SPEED OF THE WHEELS WHEN ROBOT ROTATES
 ROTATE_RIGHT_OFFSET             = ROTATE_SPEED_R - ROTATE_SPEED_L
 
 ROTATE_SPEED_OFFSET             = 30    # WHAT TO OFFSET THE WHEELS SPEED WITH WHEN WE DETECT A LINE ON THE FAR OUT IR SENSORS
@@ -103,8 +104,7 @@ def followLine(MODE):
     if (MODE==DEFAULT_LINE_FOLLOWING):
         # IF BOTH OF THE MIDDLE SENSORS DETECT NO TAPE, WE MUST HAVE REACHED THE END OF A LINE
         # OR ESCAPED THE LINE
-        if(LEFT_IR_VAL == NO_TAPE_DETECTED) and (RIGHT_IR_VAL == NO_TAPE_DETECTED) and (FAR_LEFT_IR_VAL == NO_TAPE_DETECTED) or (FAR_RIGHT_IR_VAL == NO_TAPE_DETECTED):
-            print("NO MORE LINE DETECTED")
+        if(LEFT_IR_VAL == NO_TAPE_DETECTED) and (RIGHT_IR_VAL == NO_TAPE_DETECTED):
             rc.stop()                       # THUS, STOP THE MOTOR
             return NO_MORE_LINE_DETECTED    # AND RETURN WITH THE CODE FOR NO MORE LINE 
 
@@ -127,8 +127,10 @@ def followLine(MODE):
                 #rc.moveRightForward(FORWARD_SPEED-NO_TAPE_OFFSET)
                 
                 # ROTATE CW WHILE NO TAPE IS DETECTED ON THE LEFT IR
-                while rc.readLeftIR() == NO_TAPE_DETECTED:
+                start1 = time.time()
+                while (rc.readLeftIR() == NO_TAPE_DETECTED) and ((time.time()-start1)<LINE_FOLLOWING_TURN_TIMEOUT):
                     rc.rotate(rc.CW, ROTATE_SPEED_L, ROTATE_RIGHT_OFFSET)
+                    readIR()
 
             # ELSE IF ONLY THE RIGHT IR IS NOT DETECTING A LINE
             elif RIGHT_IR_VAL == NO_TAPE_DETECTED:
@@ -136,9 +138,12 @@ def followLine(MODE):
                 #rc.moveLeftForward(FORWARD_SPEED-NO_TAPE_OFFSET)
                 #rc.moveRightForward(FORWARD_SPEED+NO_TAPE_OFFSET)
                 
-                # ROTATE CCW WHILE NO TAPE IS DETECTED ON THE RIGHT IR
-                while rc.readRightIR() == NO_TAPE_DETECTED:
+                # ROTATE CCW WHILE NO TAPE IS DETECTED ON THE RIGHT IR BUT FOR ONLY A SMALL AMOUNT OF TIME
+                # OTHERWISE, WE REALLY MISSED THE LINE 
+                start1 = time.time()
+                while (rc.readRightIR() == NO_TAPE_DETECTED)  and ((time.time()-start1)<LINE_FOLLOWING_TURN_TIMEOUT):
                     rc.rotate(rc.CCW, ROTATE_SPEED_L, ROTATE_RIGHT_OFFSET)
+                    readIR()
                     
                     
     
@@ -215,6 +220,8 @@ def turn(dir):
         rc.rotate(rc.CCW,ROTATE_SPEED_L-ROTATE_SPEED_OFFSET,ROTATE_RIGHT_OFFSET)
         while((rc.readLeftIR() == NO_TAPE_DETECTED) or (rc.readRightIR() == NO_TAPE_DETECTED)):
             pass
+        
+        readIR()
         # THEN STOP THE ROBOT
         rc.stop()
     
@@ -231,7 +238,7 @@ def detectFace(angle):
     while ((time.time()-start_time)<LOOKING_TIMEOUT):
         _,frame = cap.read()                                                # READ FRAME
         gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)                       # CONVERT FRAME TO GRAY SCALE
-        faces = face_cascade.detectMultiScale(gray,1.3,5,minSize=(190,190)) # DETECT FACES OF MIN SIZE 190x190 PIXELS
+        faces = face_cascade.detectMultiScale(gray,1.3,5,minSize=(180,180)) # DETECT FACES OF MIN SIZE 190x190 PIXELS
 
         # IF DEBUG IS SET TO TRUE
         if DEBUG:
@@ -263,14 +270,14 @@ def lookForFace():
         return FACE_DETECTED_FORWARD
 
     # THEN THE LEFT SIDE
-    ret = detectFace(160)
+    ret = detectFace(165)
     if ret == 1:
         print("FACE_DETECTED_LEFT :)")
         rc.setCameraHorzServo(90)                       # SET THE CAMERA TO LOOK AT THE CENTER
         return FACE_DETECTED_LEFT
 
     # THEN THE RIGHT SIDE
-    ret = detectFace(20)
+    ret = detectFace(25)
     if ret == 1:
         print("FACE_DETECTED_RIGHT :)")
         rc.setCameraHorzServo(90)                       # SET THE CAMERA TO LOOK AT THE CENTER
@@ -318,6 +325,7 @@ def main():
     
     # INITIALIZE ROBOT
     rc.init()
+    rc.setLED(255,255,255)
 
     while(True):
         #===================================#
@@ -340,33 +348,37 @@ def main():
         # LINE FOLLOWING STATE
         #===================================#
         if(STATE == FOLLOW_LINE):
-            ret = followLine(LINE_FOLLOWING_MODE)
-
+            retu = followLine(LINE_FOLLOWING_MODE)
+            print("RETU = ",retu)
             # IF WE DETECTED AN INTERSECTION
-            if ret == INTERSECTION_DETECTED:
+            if retu == INTERSECTION_DETECTED:
                 # FIRST THING TO DO IS CHECK IF THE CAMERA SEES A FACE IN ANY OF THE DIRECTIONS
                 ret2 = lookForFace()
                 # IF THERE'S ONE DETECTED FOWARD
                 if ret2 == FACE_DETECTED_FORWARD:
                     # LET'S BIAS NO TURN TO OCCUR
                     BIAS   = FORWARD
+                    print("BIAS FORWARD")
                     ATTACK = 1
                 
                 # IF THERE'S ONE DETECTED LEFT
                 elif ret2 == FACE_DETECTED_LEFT:
                     # LET'S BIAS THE ROBOT TO TURN LEFT
                     BIAS   = LEFT
+                    print("BIAS LEFT")
                     ATTACK = 1
 
                 # IF THERE'S ONE DETECTED RIGHT
                 elif ret2 == FACE_DETECTED_RIGHT:
                     # LET'S BIAS THE ROBOT TO TURN RIGH
                     BIAS   = RIGHT
+                    print("BIAS RIGHT")
                     ATTACK = 1
                 
                 # OTHERWISE, WE WILL ALWAYS BIAS TO GO RIGHT
                 else:
                     BIAS   = RIGHT
+                    print("BIAS RIGHT")
                     ATTACK = 0
 
 
@@ -396,7 +408,7 @@ def main():
                             STATE = CHANGE_DIRECTION    # THEN CHANGE STATE TO CHANGE_DIRECTION
 
 
-                if BIAS == RIGHT:
+                elif BIAS == RIGHT:
                     # CHECK IF THE INTERSECTION HAS A RIGHT TURN
                     # IF IT DOES
                     if (FAR_RIGHT_IR_VAL == TAPE_DETECTED):
@@ -451,7 +463,7 @@ def main():
             # WITCH POTENTIALLY MEANS THAT WE'RE AT A DEAD END, OR
             # THE LINE FOLLOWING MESSED UP AND LEFT THE LINE!!
             # WE'LL ASSUME THAT THERE WE REACHED A DEAD END FOR NOW
-            elif ret == NO_MORE_LINE_DETECTED:
+            elif retu == NO_MORE_LINE_DETECTED:
                 print("ATTACK = ",ATTACK)
                 if ATTACK == 0:
                     TURN_DIR = BACK             # IF SO, SET THE TURNING DIRECTION TO BACK
@@ -474,7 +486,7 @@ def main():
                 CUR_DIR = (CUR_DIR-1)%4
 
             elif(TURN_DIR == BACK):
-                turn(RIGHT)
+                turn(rc.CW)
                 CUR_DIR = (CUR_DIR+2)%4
 
             # ONCE, WE'RE DONE CHANGING DIRECTION

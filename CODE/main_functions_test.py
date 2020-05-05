@@ -2,6 +2,7 @@ import main as mn
 import time
 
 mn.rc.init()
+mn.rc.setLED(255,255,255)
 
 # ENABLE WHEN A SPECIFIC PART IS TO BE TESTED
 TEST_IR                         = 0 # [GOOD]
